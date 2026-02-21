@@ -36,6 +36,36 @@ class DataWriterEngine:
         self._ovs_hdf5_current_start = 0
         self._ovs_hdf5_seq = 0
 
+        self._zmq_pub = None
+        self._zmq_enabled = False
+        self._zmq_setup()
+
+    def _zmq_setup(self) -> None:
+        endpoint = (getattr(self._config, "zmq_pub_endpoint", "") or "").strip()
+        if not endpoint:
+            endpoint = (os.environ.get("CALLISTO_ZMQ_PUB_ENDPOINT") or "").strip()
+        if not endpoint:
+            return
+
+        bind = getattr(self._config, "zmq_pub_bind", True)
+        topic = getattr(self._config, "zmq_pub_topic", "callisto")
+        hwm = getattr(self._config, "zmq_pub_hwm", 10)
+
+        try:
+            from .zmq_pub import ZmqPublisher
+
+            pub = ZmqPublisher(endpoint=endpoint, bind=bool(bind), topic=str(topic), hwm=int(hwm))
+            if not pub.start():
+                self._logger(1, "ZMQ publisher disabled (pyzmq missing or bind/connect failed)", None)
+                return
+            self._zmq_pub = pub
+            self._zmq_enabled = True
+            self._logger(2, "ZMQ publisher enabled: endpoint=%s", endpoint)
+        except Exception as e:
+            self._logger(1, "ZMQ publisher init failed: %s", e)
+            self._zmq_pub = None
+            self._zmq_enabled = False
+
     @staticmethod
     def normalized_output_format(value: str) -> str:
         v = (value or "fits").strip().lower()
@@ -245,6 +275,25 @@ class DataWriterEngine:
                 grp.attrs[k] = v
 
     def write_data_buffer(self, buf_bytes: bytes, ts_us: int):
+        if self._zmq_enabled and self._zmq_pub is not None and buf_bytes:
+            try:
+                matrix, freqs, timestamps_us, _ = self._build_matrix_and_axes(buf_bytes, ts_us)
+                self._zmq_pub.publish_frame(
+                    instrument=self._config.instrument,
+                    ts_us=ts_us,
+                    samplerate=int(self._config.samplerate),
+                    nchannels=int(self._config.nchannels),
+                    matrix=matrix,
+                    freqs_mhz=freqs,
+                    timestamps_us=timestamps_us,
+                    extra_meta={
+                        "filetime": int(self._config.filetime),
+                        "output_format": str(self._config.output_format),
+                    },
+                )
+            except Exception as e:
+                self._logger(1, "ZMQ publish failed: %s", e)
+
         backend = self.normalized_output_format(self._config.output_format)
         if backend == "hdf5":
             self._hdf5_write_buffer(buf_bytes, ts_us)

@@ -44,6 +44,11 @@ class Config:
     autostart: bool = False
     instrument: str = "CALLISTO"
     output_format: str = "fits"
+    # ZeroMQ PUB (opcional). Se `zmq_pub_endpoint` for vazio, streaming fica desabilitado.
+    zmq_pub_endpoint: str = ""
+    zmq_pub_bind: bool = True
+    zmq_pub_topic: str = "callisto"
+    zmq_pub_hwm: int = 10
 
 
 @dataclass

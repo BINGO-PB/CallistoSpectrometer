@@ -30,6 +30,9 @@ dependencies = [
 test = [
   "pytest>=8.0",
 ]
+zmq = [
+  "pyzmq>=25",
+]
 
 [project.scripts]
 callisto = "callisto.cli:main"
