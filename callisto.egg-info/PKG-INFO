@@ -1,0 +1,69 @@
+Metadata-Version: 2.4
+Name: callisto
+Version: 1.0.0
+Summary: Python daemon for e-Callisto receivers
+Author-email: Luciano Barosi <radiotelescopiobingo@df.ufcg.edu.br>
+Maintainer-email: Luciano Barosi <radiotelescopiobingo@df.ufcg.edu.br>
+License-Expression: MIT AND (Apache-2.0 OR BSD-2-Clause)
+Project-URL: Homepage, https://bingo.github.io/callisto
+Project-URL: Documentation, https://readthedocs.org
+Project-URL: Repository, https://github.com/me/spam.git
+Project-URL: Issues, https://github.com/me/spam/issues
+Project-URL: Changelog, https://github.com/me/spam/blob/master/CHANGELOG.md
+Keywords: python,radioastronomy,spectrometer,callisto
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: radioastronomers
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pyserial>=3.5
+Requires-Dist: pyserial-asyncio>=0.6
+Requires-Dist: astropy>=5
+Requires-Dist: h5py>=3.8
+Requires-Dist: numpy>=1.23
+Provides-Extra: test
+Requires-Dist: pytest>=8.0; extra == "test"
+Dynamic: license-file
+
+# callisto
+
+Daemon Python para aquisição de dados do receptor e-Callisto.
+
+## Instalação
+
+```bash
+pip install .
+```
+
+## CLI
+
+Após instalar, os comandos ficam disponíveis:
+
+- `callisto`
+- `ecallisto`
+
+## Organização do pacote
+
+- `callisto/constants.py`: constantes e estados do protocolo
+- `callisto/models.py`: dataclasses de domínio
+- `callisto/logging_utils.py`: logging e utilitários de log
+- `callisto/time_utils.py`: utilitários de tempo UTC timezone-aware
+- `callisto/runtime.py`: fachada de runtime e compatibilidade com legado
+- `callisto/cli.py`: ponto de entrada de linha de comando
+
+## Exemplos de configuração
+
+Foram adicionados exemplos prontos em `examples/`:
+
+- `examples/callisto.cfg`
+- `examples/frq00005.cfg`
+- `examples/scheduler.cfg`
+
+Esses arquivos são incluídos no pacote-fonte via `MANIFEST.in` e também
+instalados no wheel em `share/callisto/examples`.
+
+## Notas
+
+O módulo `ecallisto.py` permanece para compatibilidade com integrações legadas, mas já consome módulos do pacote `callisto`.

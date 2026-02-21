@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "callisto"
+keywords = ["python", "radioastronomy", "spectrometer", "callisto"]
+version = "1.0.0"
+description = "Python daemon for e-Callisto receivers"
+classifiers =[
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: radioastronomers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+]
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "Luciano Barosi", email = "radiotelescopiobingo@df.ufcg.edu.br"}]
+maintainers = [{name = "Luciano Barosi", email = "radiotelescopiobingo@df.ufcg.edu.br"}]
+license = "MIT AND (Apache-2.0 OR BSD-2-Clause)"
+dependencies = [
+  "pyserial>=3.5",
+  "pyserial-asyncio>=0.6",
+  "astropy>=5",
+  "h5py>=3.8",
+  "numpy>=1.23",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8.0",
+]
+
+[project.scripts]
+callisto = "callisto.cli:main"
+ecallisto = "callisto.cli:main"
+
+[tool.setuptools]
+packages = ["callisto"]
+py-modules = ["ecallisto", "eeprom"]
+include-package-data = true
+
+[tool.setuptools.data-files]
+"share/callisto/examples" = [
+  "examples/callisto.cfg",
+  "examples/frq00005.cfg",
+  "examples/scheduler.cfg",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[project.urls]
+Homepage = "https://bingo.github.io/callisto"
+Documentation = "https://readthedocs.org"
+Repository = "https://github.com/me/spam.git"
+Issues = "https://github.com/me/spam/issues"
+Changelog = "https://github.com/me/spam/blob/master/CHANGELOG.md"

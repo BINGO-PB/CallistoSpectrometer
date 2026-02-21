@@ -1,0 +1,15 @@
+# Arquivos de documentação principais
+include README.md
+include AUTHORS
+include COPYING
+
+# Documentação de arquitetura e manuais
+recursive-include docs *.md
+recursive-include man *
+
+# Exemplos de configuração distribuídos com o sdist
+# (podem ser copiados para /etc/e-callisto em instalações manuais)
+recursive-include examples *.cfg
+
+# Arquivos de suporte Debian (referência operacional)
+recursive-include debian *.cfg *.service *.default *.udev README.Debian

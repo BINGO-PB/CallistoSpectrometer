@@ -1,0 +1,3 @@
+[console_scripts]
+callisto = callisto.cli:main
+ecallisto = callisto.cli:main

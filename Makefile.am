@@ -1,4 +1,0 @@
-AUTOMAKE_OPTIONS = foreign
-ACLOCAL_AMFLAGS = -I m4
-MAINT_CHARSET = latin1
-SUBDIRS = src man
