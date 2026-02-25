@@ -274,7 +274,12 @@ class _PythonDaemon:
                 if idx in applied:
                     continue
                 if t_sec >= entry.t:
-                    logprintf(2, "Applying schedule entry t=%d action=%d", entry.t, entry.action)
+                    logprintf(
+                        2,
+                        "Applying schedule entry t=%d action=%d",
+                        entry.t,
+                        entry.action,
+                    )
                     self._apply_schedule_action(entry)
                     applied.add(idx)
             self._stop_event.wait(timeout=SCHEDULE_CHECK_INTERVAL)
@@ -322,7 +327,9 @@ class _PythonDaemon:
         srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         srv.bind(("0.0.0.0", int(self._cfg.net_port)))
         srv.listen(5)
-        logprintf(2, "Python Callisto TCP control server listening on %d", self._cfg.net_port)
+        logprintf(
+            2, "Python Callisto TCP control server listening on %d", self._cfg.net_port
+        )
         with srv:
             while not self._stop_event.is_set():
                 try:
@@ -330,7 +337,9 @@ class _PythonDaemon:
                     conn, addr = srv.accept()
                 except OSError:
                     continue
-                threading.Thread(target=self._handle_client, args=(conn, addr), daemon=True).start()
+                threading.Thread(
+                    target=self._handle_client, args=(conn, addr), daemon=True
+                ).start()
 
     # --- public API -------------------------------------------------------
 
@@ -367,10 +376,12 @@ def _python_daemon_main() -> int:
     schedule = load_schedule_file(sched_path)
 
     # Ensure FITS/HDF5 backends can be initialised on demand.
-    cfg = cfg.model_copy(update={
-        "datadir": cfg.datadir or os.getcwd(),
-        "ovsdir": cfg.ovsdir or cfg.datadir or os.getcwd(),
-    })
+    cfg = cfg.model_copy(
+        update={
+            "datadir": cfg.datadir or os.getcwd(),
+            "ovsdir": cfg.ovsdir or cfg.datadir or os.getcwd(),
+        }
+    )
 
     daemon = _PythonDaemon(cfg, schedule)
     return daemon.serve_forever()
