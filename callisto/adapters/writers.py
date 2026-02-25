@@ -13,8 +13,9 @@ from __future__ import annotations
 
 import datetime
 import importlib
+import json
 import os
-from typing import Callable
+from typing import Any, Callable
 
 from ..domain import Config, OVSItem
 from ..ports import DataWriterPort
@@ -45,6 +46,10 @@ class DataWriterEngine:
         self._ovs_hdf5_current_path: str | None = None
         self._ovs_hdf5_current_start = 0
         self._ovs_hdf5_seq = 0
+
+        # Header/attribute templates loaded lazily from JSON docs.
+        self._fits_header_template: dict[str, Any] | None = None
+        self._hdf5_attrs_template: dict[str, Any] | None = None
 
         self._zmq_pub: DataWriterPort | None = None
         self._zmq_enabled = False
@@ -125,42 +130,118 @@ class DataWriterEngine:
         return os.path.join(self._config.datadir, name)
 
     def _fits_prepare_header(self, ts_us: int, end_ts_us: int):
+        """Build a FITS header using ``docs/fitsheader.json`` as template.
+
+        The JSON file captures the canonical legacy header. Values
+        that depend on runtime context (timestamps, instrument,
+        samplerate, etc.) are overridden from the configuration and
+        current buffer timestamps.
+        """
+
+        assert self._astropy_fits is not None
+
+        if self._fits_header_template is None:
+            base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            docs = os.path.join(base, "docs", "fitsheader.json")
+            try:
+                with open(docs, "r", encoding="utf-8") as f:
+                    self._fits_header_template = json.load(f)
+            except Exception as e:  # pragma: no cover - depends on FS
+                self._logger(1, "Failed to load FITS header template: %s", e)
+                self._fits_header_template = {}
+
+        tpl = dict(self._fits_header_template or {})
         hdr = self._astropy_fits.Header()
+
+        # Start with template values.
+        for key, value in tpl.items():
+            if key == "COMMENT" and isinstance(value, list):
+                for line in value:
+                    hdr.add_comment(str(line))
+            elif key == "HISTORY" and isinstance(value, list):
+                for line in value:
+                    hdr.add_history(str(line))
+            else:
+                if key in {"SIMPLE", "EXTEND"}:
+                    hdr[key] = bool(value)
+                else:
+                    hdr[key] = value
+
+        # Runtime overrides that must reflect actual observation.
         hdr["INSTRUME"] = str(self._config.instrument)
-        hdr["DATE-OBS"] = self._utc_iso_from_us(ts_us)
-        hdr["DATE-END"] = self._utc_iso_from_us(end_ts_us)
-        hdr["TIMEZONE"] = "UTC"
+        hdr["DATE-OBS"] = self._utc_iso_from_us(ts_us).split("T")[0]
+        hdr["TIME-OBS"] = self._utc_iso_from_us(ts_us).split("T")[1].rstrip("Z")
+        hdr["DATE-END"] = self._utc_iso_from_us(end_ts_us).split("T")[0]
+        hdr["TIME-END"] = self._utc_iso_from_us(end_ts_us).split("T")[1].rstrip("Z")
         hdr["SAMPRATE"] = int(self._config.samplerate)
         hdr["NCHAN"] = int(self._config.nchannels)
         hdr["FOCUSCOD"] = int(self._config.focuscode)
         hdr["AGCLEVEL"] = int(self._config.agclevel)
         hdr["CHGPUMP"] = int(self._config.chargepump)
         hdr["CLOCKSRC"] = int(self._config.clocksource)
+
+        # Observatory/location information when available in config.
+        try:
+            if getattr(self._config, "height", None) is not None:
+                hdr["OBS_ALT"] = float(self._config.height)
+        except Exception:  # pragma: no cover - defensive
+            pass
+        for key in ("origin", "titlecomment"):
+            val = getattr(self._config, key, "")
+            if val:
+                hdr[key.upper()] = str(val)
+
+        # Frequency file and AGC level names consistent with template.
+        if getattr(self._config, "frqfile", ""):
+            hdr["FRQFILE"] = str(self._config.frqfile)
+        hdr["PWM_VAL"] = int(self._config.agclevel)
+
         return hdr
 
     def _hdf5_prepare_attrs(self, ts_us: int) -> dict:
-        return {
-            "INSTRUME": str(self._config.instrument),
-            "DATE-OBS": self._utc_iso_from_us(ts_us),
-            "TIMEZONE": "UTC",
-            "SAMPRATE": int(self._config.samplerate),
-            "NCHAN": int(self._config.nchannels),
-            "FOCUSCOD": int(self._config.focuscode),
-            "AGCLEVEL": int(self._config.agclevel),
-            "CHGPUMP": int(self._config.chargepump),
-            "CLOCKSRC": int(self._config.clocksource),
-        }
+        """Prepare top-level HDF5 attributes based on JSON template."""
+
+        if self._hdf5_attrs_template is None:
+            base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            docs = os.path.join(base, "docs", "hdf5atrrbs.json")
+            try:
+                with open(docs, "r", encoding="utf-8") as f:
+                    self._hdf5_attrs_template = json.load(f)
+            except Exception as e:  # pragma: no cover - depends on FS
+                self._logger(1, "Failed to load HDF5 attrs template: %s", e)
+                self._hdf5_attrs_template = {}
+
+        tpl = dict(self._hdf5_attrs_template.get("file_level_attributes", {}))
+
+        tpl["INSTRUME"] = str(self._config.instrument)
+        tpl["DATE-OBS"] = self._utc_iso_from_us(ts_us)
+        tpl["SAMPRATE"] = int(self._config.samplerate)
+        tpl["NCHAN"] = int(self._config.nchannels)
+        tpl["FOCUSCOD"] = int(self._config.focuscode)
+        tpl["AGCLEVEL"] = int(self._config.agclevel)
+        tpl["CHGPUMP"] = int(self._config.chargepump)
+        tpl["CLOCKSRC"] = int(self._config.clocksource)
+
+        return tpl
 
     def _hdf5_prepare_overview_attrs(self, ts_us: int) -> dict:
-        return {
-            "INSTRUME": str(self._config.instrument),
-            "DATE-OBS": self._utc_iso_from_us(ts_us),
-            "TIMEZONE": "UTC",
-            "TYPE": "SPECTRAL_OVERVIEW",
-            "AGCLEVEL": int(self._config.agclevel),
-            "CLOCKSRC": int(self._config.clocksource),
-            "FILETIME": int(self._config.filetime),
-        }
+        if self._hdf5_attrs_template is None:
+            base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            docs = os.path.join(base, "docs", "hdf5atrrbs.json")
+            try:
+                with open(docs, "r", encoding="utf-8") as f:
+                    self._hdf5_attrs_template = json.load(f)
+            except Exception as e:  # pragma: no cover - depends on FS
+                self._logger(1, "Failed to load HDF5 attrs template: %s", e)
+                self._hdf5_attrs_template = {}
+
+        tpl = dict(self._hdf5_attrs_template.get("overview_file_attributes", {}))
+        tpl["INSTRUME"] = str(self._config.instrument)
+        tpl["DATE-OBS"] = self._utc_iso_from_us(ts_us)
+        tpl["AGCLEVEL"] = int(self._config.agclevel)
+        tpl["CLOCKSRC"] = int(self._config.clocksource)
+        tpl["FILETIME"] = int(self._config.filetime)
+        return tpl
 
     def _fits_rotate_if_needed(self, ts_us: int) -> None:
         if self._fits_current_path is None or self._fits_current_start <= 0:

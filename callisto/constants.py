@@ -1,14 +1,25 @@
-"""Constantes de protocolo e estados de execução."""
+"""Constantes de protocolo e estados de execução.
+
+The values here mirror the legacy C implementation in the original
+``e-Callisto`` daemon (see ``callisto.c`` / ``callisto.h``) so that
+the pure-Python runtime observes the same on-wire protocol.
+"""
 
 RESET_STRING: str = "D0\rGD\rS0\r"
 ID_QUERY: str = "S0\r"
 ID_RESPONSE: str = "$CRX:Stopped\r"
+
+# Special values used by the legacy hexdata state machine
 HEXDATA_RESET: int = -1
 
-MESSAGE_START: str = "<"
-MESSAGE_END: str = ">"
+# Firmware special characters (messages and data framing)
+MESSAGE_START: str = "$"
+MESSAGE_END: str = "\r"
+DATA_START: str = "2"
+DATA_END: str = "&"
+EEPROM_READY: str = "]"
 
-MAX_MESSAGE: int = 4096
+MAX_MESSAGE: int = 128
 MAX_OVS: int = 13200
 SCHEDULE_CHECK_INTERVAL: int = 60
 

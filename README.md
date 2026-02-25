@@ -1,49 +1,110 @@
 # callisto
 
-Daemon Python para aquisição de dados do receptor e-Callisto.
+Python daemon for data acquisition from e-Callisto radio spectrometers.
 
-## Instalação
+> This repository provides a modern, async Python reimplementation of the
+> original C-based `ecallisto` daemon, with a hexagonal architecture and
+> optional ZeroMQ streaming for downstream pipelines (e.g. BINGO / KUNLUN).
+
+## Features
+
+- Compatible serial protocol with legacy e-Callisto receivers.
+- Hexagonal architecture (`domain` / `application` / `ports` / `adapters`).
+- FITS and HDF5 writers, with headers defined from JSON templates
+	(`docs/fitsheader.json`, `docs/hdf5atrrbs.json`).
+- Optional ZeroMQ PUB stream of spectra for real-time consumers.
+- Scheduler compatible with legacy `scheduler.cfg` files.
+- Configurable via simple `callisto.cfg` INI-style files.
+
+## Installation
+
+From a cloned repository, inside a virtual environment:
 
 ```bash
 pip install .
 ```
 
-## CLI
+To install with optional ZeroMQ support:
 
-Após instalar, os comandos ficam disponíveis:
+```bash
+pip install .[zmq]
+```
+
+After installing, the following entry points are available:
 
 - `callisto`
-- `ecallisto`
+- `ecallisto` (alias for compatibility)
 
-## Organização do pacote
+Both resolve to the same Python CLI and will fall back to the legacy C
+daemon if it is available on the system, otherwise running the pure
+Python implementation.
 
-- `callisto/constants.py`: constantes e estados do protocolo
-- `callisto/models.py`: dataclasses de domínio
-- `callisto/logging_utils.py`: logging e utilitários de log
-- `callisto/time_utils.py`: utilitários de tempo UTC timezone-aware
-- `callisto/runtime.py`: fachada de runtime e compatibilidade com legado
-- `callisto/cli.py`: ponto de entrada de linha de comando
+## Quick start
 
-## Functionalities
+1. Copy the example configuration files:
 
+	 - `examples/callisto.cfg`
+	 - `examples/frq00005.cfg`
+	 - `examples/scheduler.cfg`
 
+	 into a writable directory (e.g. under your home) and adjust at least:
 
-## Exemplos de configuração
+	 - `[datapath]` / `[logpath]` (or `CALLISTO_DATADIR` / `CALLISTO_LOGDIR`)
+	 - `[rxcomport]` to match your serial device (e.g. `/dev/ttyUSB0`).
 
-Foram adicionados exemplos prontos em `examples/`:
+2. Start the daemon pointing to your config:
 
-- `examples/callisto.cfg`
-- `examples/frq00005.cfg`
-- `examples/scheduler.cfg`
+	 ```bash
+	 callisto --config /path/to/callisto.cfg
+	 ```
 
-Esses arquivos são incluídos no pacote-fonte via `MANIFEST.in` e também
-instalados no wheel em `share/callisto/examples`.
+3. Use the TCP control port (or the CLI wrapper) to start/stop
+	 acquisition according to the measurement modes described in
+	 `docs/configurations.md`.
 
-## Fontes utilizadas
+If the hardware does not respond to the serial handshake, the Python
+daemon will refuse to enter RUNNING state and will log the reason in
+`ecallisto.log` under the configured log directory.
 
-This project i a python port with added functionalities of the work done by Alec Myczko and available as a debian package as 
+## ZeroMQ streaming
 
-Package: callisto
-Version: 1.1.0-3
-Architecture: i386
-Maintainer: Alex Myczko <tar@debian.org>
+If `zmq_pub_endpoint` is configured (or the environment variable
+`CALLISTO_ZMQ_PUB_ENDPOINT` is set), the data writer will publish each
+acquired buffer via a ZeroMQ PUB socket. The frame layout is documented
+in `callisto/adapters/zmq_pub.py` and is designed for consumption by
+analysis pipelines (e.g. a KUNLUN client) or simple viewers.
+
+An example GUI client is available in `examples/zmq_viewer.py`, which
+subscribes to the PUB socket and displays a live waterfall using
+PyQt5/pyqtgraph.
+
+## Package layout
+
+- `callisto/domain/`: Pydantic models for configuration and domain
+	entities.
+- `callisto/application/`: configuration loading, scheduler, and control
+	logic.
+- `callisto/ports/`: abstract ports for serial backends and data
+	writers.
+- `callisto/adapters/`: concrete adapters (serial backend, file/ZMQ
+	writers, etc.).
+- `callisto/runtime.py`: Python daemon runtime and compatibility wrapper
+	with the legacy C daemon.
+- `callisto/cli.py`: command-line entry point.
+- `docs/`: user/developer documentation, FITS/HDF5 header templates and
+	reference material.
+- `examples/`: example configuration files and simple tools.
+
+## Documentation
+
+High-level architecture, configuration examples, and protocol details
+are described in the `docs/` directory. The long-term goal is to expose
+these via a Sphinx/MyST documentation site (see `AGENTS.md` for the
+documentation manifesto and conventions).
+
+## Acknowledgements
+
+This project is a Python port with additional features based on the
+original work by Alex Myczko, distributed as the Debian package
+`callisto` (version 1.1.0-3, maintainer `Alex Myczko <tar@debian.org>`),
+adapted and extended for the BINGO Collaboration.

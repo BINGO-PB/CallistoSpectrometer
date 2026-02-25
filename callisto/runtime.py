@@ -24,6 +24,9 @@ from .application import control as app_control
 from .application.config_loader import load_config, load_schedule_file
 from .application.frequencies import load_frequencies
 from .constants import (
+    DATA_END,
+    DATA_START,
+    EEPROM_READY,
     ID_QUERY,
     ID_RESPONSE,
     MESSAGE_END,
@@ -74,6 +77,20 @@ class _PythonDaemon:
         self._acq_thread: threading.Thread | None = None
         self._acq_stop = threading.Event()
 
+        # timers derived from legacy configuration (milliseconds)
+        try:
+            self._timer_preread_s = max(
+                0.0, float(getattr(self._cfg, "timerpreread", 0)) / 1000.0
+            )
+        except Exception:  # pragma: no cover - defensive
+            self._timer_preread_s = 0.0
+        try:
+            self._timeout_hexdata_s = max(
+                0.0, float(getattr(self._cfg, "timeouthexdata", 0)) / 1000.0
+            )
+        except Exception:  # pragma: no cover - defensive
+            self._timeout_hexdata_s = 0.0
+
     # --- frequency helpers -------------------------------------------------
 
     def _get_channel_frequencies(self) -> list[float]:
@@ -114,23 +131,26 @@ class _PythonDaemon:
         return ok
 
     def _close_serial(self) -> None:
+        """Close the serial backend, tolerating spurious errors."""
+
         self._serial.stop()
 
-    def _serial_handshake(self) -> None:
+    def _serial_handshake(self, timeout: float = 3.0) -> bool:
         """Send a minimal reset/identify sequence to the hardware.
 
-        This follows the high-level behaviour of the legacy daemon
-        without assuming details of the response contents.
+        Returns ``True`` when an :data:`ID_RESPONSE` trailer is
+        observed within *timeout* seconds. On failure, a warning is
+        logged and ``False`` is returned so callers can decide whether
+        to abort acquisition instead of looping forever on a dead
+        device.
         """
 
         try:
-            # Reset receiver and try to observe a basic ID response. The
-            # call is deliberately best-effort: a missing or unexpected
-            # response is logged but does not abort acquisition.
             self._serial.write(RESET_STRING)
 
-            deadline = time.time() + 3.0
+            deadline = time.time() + max(0.5, float(timeout))
             seen: list[str] = []
+            got_response = False
             while time.time() < deadline:
                 ch = self._serial.read_char(timeout=0.2)
                 if ch is None:
@@ -139,13 +159,20 @@ class _PythonDaemon:
                 joined = "".join(seen)
                 if ID_RESPONSE and joined.endswith(ID_RESPONSE):
                     logprintf(2, "Serial ID response detected during handshake", None)
+                    got_response = True
                     break
+
+            if not got_response:
+                logprintf(1, "No serial ID response detected during handshake", None)
 
             # Final ID query as done by the legacy daemon.
             if ID_QUERY:
                 self._serial.write(ID_QUERY)
+
+            return got_response
         except Exception as exc:  # pragma: no cover - defensive
             logprintf(1, "Serial handshake failed: %s", exc)
+            return False
 
     @staticmethod
     def _extract_frames(text: str) -> list[str]:
@@ -173,39 +200,121 @@ class _PythonDaemon:
         return frames
 
     def _acquisition_loop(self) -> None:
-        """Very small frame collector from the serial port.
+        """Acquisition loop that mirrors the legacy C daemon.
 
-        The exact on-wire protocol is handled by the legacy firmware;
-        here we only group payloads between ``MESSAGE_START`` and
-        ``MESSAGE_END``. Decoding of the frames into spectra and
-        calling :class:`DataWriterEngine` can be implemented in a
-        follow-up step without changing the public API.
+        The Callisto firmware multiplexes two streams over the same
+        serial link:
+
+        * *messages* delimited by :data:`MESSAGE_START` / ``MESSAGE_END``
+          (e.g. ``CRX:Started``), and
+        * *hex-encoded data* delimited by :data:`DATA_START` /
+          :data:`DATA_END`, carrying 8/10-bit samples as four ASCII
+          hex digits per value.
+
+        This loop follows the same high-level state machine as the C
+        implementation, but delegates actual persistence to
+        :class:`DataWriterEngine` instead of hand-written FITS I/O.
         """
 
-        buffer: list[str] = []
-        inside = False
+        in_message = False
+        in_data = False
+        message: list[str] = []
+        hex_chars: list[str] = []
+        data_start_ts_us: int | None = None
+
+        def _flush_data() -> None:
+            nonlocal hex_chars, data_start_ts_us
+            if not hex_chars:
+                data_start_ts_us = None
+                return
+
+            # Decode four-hex-digit values into 8-bit samples. The
+            # legacy daemon supports both 8-bit and 10-bit firmware;
+            # here we always reduce values to 8 bits, matching the
+            # original behaviour for 10-bit data (value >> 2).
+            text = "".join(hex_chars)
+            buf = bytearray()
+            # only complete groups of 4 hex chars
+            end = (len(text) // 4) * 4
+            for i in range(0, end, 4):
+                group = text[i : i + 4]
+                try:
+                    value = int(group, 16)
+                except ValueError:
+                    logprintf(1, "Invalid hex group %r in data stream", group)
+                    continue
+                # 0x2323 is used as an internal end marker by the
+                # firmware; ignore it here and rely on DATA_END for
+                # framing.
+                if value == 0x2323:
+                    continue
+                buf.append((value >> 2) & 0xFF)
+
+            if not buf:
+                data_start_ts_us = None
+                return
+
+            ts_us = data_start_ts_us or get_usecs()
+            try:
+                self._writer.write_data_buffer(bytes(buf), ts_us)
+            except Exception as exc:  # pragma: no cover - defensive
+                logprintf(1, "Failed to persist data buffer: %s", exc)
+
+            logprintf(3, "Received data buffer len=%d at %d", len(buf), ts_us)
+            hex_chars = []
+            data_start_ts_us = None
+
         while not self._acq_stop.is_set() and not self._stop_event.is_set():
             ch = self._serial.read_char(timeout=0.5)
             if ch is None:
                 continue
-            if ch == MESSAGE_START:
-                buffer.clear()
-                inside = True
+
+            # Message framing (status lines from firmware)
+            if in_message and ch == MESSAGE_END:
+                msg = "".join(message)
+                in_message = False
+                message.clear()
+                # For now we simply log messages; higher-level state
+                # handling (e.g. CRX:Started/Stopped) can be wired in
+                # later if needed.
+                logprintf(3, "Firmware message: %s", msg)
                 continue
-            if ch == MESSAGE_END and inside:
-                payload = "".join(buffer)
-                inside = False
-                ts_us = get_usecs()
-                try:
-                    buf_bytes = payload.encode("latin1", errors="ignore")
-                    if buf_bytes:
-                        self._writer.write_data_buffer(buf_bytes, ts_us)
-                except Exception as exc:  # pragma: no cover - defensive
-                    logprintf(1, "Failed to persist data frame: %s", exc)
-                logprintf(3, "Received frame len=%d at %d", len(payload), ts_us)
+
+            if not in_message and ch == MESSAGE_START:
+                in_message = True
+                message.clear()
                 continue
-            if inside:
-                buffer.append(ch)
+
+            if in_message:
+                if len(message) < MAX_MESSAGE:
+                    message.append(ch)
+                continue
+
+            # Ignore EEPROM-ready notifications
+            if ch == EEPROM_READY:
+                continue
+
+            # Data framing (ASCII hex stream)
+            if not in_data and ch == DATA_START:
+                in_data = True
+                hex_chars = []
+                data_start_ts_us = get_usecs()
+                continue
+
+            if in_data and ch == DATA_END:
+                _flush_data()
+                in_data = False
+                continue
+
+            if in_data:
+                # Accept only hex characters; anything else is
+                # treated as a protocol error and ignored for now.
+                if ch.strip():
+                    hex_chars.append(ch)
+                continue
+
+            # Anything that reaches here is outside known framing.
+            logprintf(1, "Unexpected character %r outside message/data", ch)
 
     # --- high-level actions used by the control protocol -----------------
 
@@ -215,7 +324,14 @@ class _PythonDaemon:
         logprintf(2, "Starting recording (Python daemon)")
         if not self._open_serial():
             return
-        self._serial_handshake()
+        if not self._serial_handshake():
+            # Do not keep running in a "zombie" acquisition state when
+            # the receiver does not respond at all. We log a clear
+            # error, close the port and keep the daemon in STOPPED
+            # state so that schedulers or operators can retry later.
+            logprintf(0, "Aborting start: receiver did not respond to handshake", None)
+            self._close_serial()
+            return
         self._acq_stop.clear()
         self._acq_thread = threading.Thread(
             target=self._acquisition_loop,
@@ -229,10 +345,28 @@ class _PythonDaemon:
         if self._state == STOPPED:
             return
         logprintf(2, "Stopping recording (Python daemon)")
+        # Honour legacy timerpreread by waiting a short, configurable
+        # period before actually signalling the acquisition thread to
+        # stop. This mirrors the idea of letting pending reads
+        # complete before shutdown or mode changes.
+        if getattr(self, "_timer_preread_s", 0.0) > 0.0:
+            try:
+                time.sleep(self._timer_preread_s)
+            except Exception:  # pragma: no cover - defensive
+                pass
         self._acq_stop.set()
         if self._acq_thread is not None:
             self._acq_thread.join(timeout=2.0)
             self._acq_thread = None
+        # After signalling stop and waiting for the acquisition loop
+        # to finish, give the serial path a chance to drain remaining
+        # data according to timeouthexdata before closing the
+        # transport.
+        if getattr(self, "_timeout_hexdata_s", 0.0) > 0.0:
+            try:
+                time.sleep(self._timeout_hexdata_s)
+            except Exception:  # pragma: no cover - defensive
+                pass
         self._close_serial()
         self._state = STOPPED
 
