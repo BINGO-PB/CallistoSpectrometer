@@ -24,6 +24,7 @@ dependencies = [
   "astropy>=5",
   "h5py>=3.8",
   "numpy>=1.23",
+  "pydantic>=2",
 ]
 
 [project.optional-dependencies]

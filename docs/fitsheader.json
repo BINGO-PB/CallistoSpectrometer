@@ -1,0 +1,55 @@
+{
+	"SIMPLE": true,
+	"BITPIX": 16,
+	"NAXIS": 2,
+	"NAXIS1": 631,
+	"NAXIS2": 200,
+	"EXTEND": true,
+
+	"COMMENT": [
+		"Warning: the value of CDELT1 may be rounded!",
+		"Warning: the frequency axis may not be regular!",
+		"Warning: the value of CDELT2 may be rounded!",
+		""
+	],
+
+	"DATE": "2004-12-06",
+	"CONTENT": "2004/12/06 Radio flux density (BLEN5M)",
+	"ORIGIN": "ETH Zurich Switzerland",
+	"TELESCOP": "Radio Spectrometer",
+	"INSTRUME": "LAB",
+	"OBJECT": "Sun",
+	"DATE-OBS": "2004/12/06",
+	"TIME-OBS": "12:45:23.382",
+	"DATE-END": "2004/12/06",
+	"TIME-END": "12:50:38",
+
+	"BZERO": 0.0,
+	"BSCALE": 1.0,
+	"BUNIT": "digits",
+	"DATAMIN": 0,
+	"DATAMAX": 255,
+
+	"CRVAL1": 45923.0,
+	"CRPIX1": 0,
+	"CTYPE1": "Time [UT]",
+	"CDELT1": 0.5,
+
+	"CRVAL2": 200.0,
+	"CRPIX2": 0,
+	"CTYPE2": "Frequency [MHz]",
+	"CDELT2": -1.0,
+
+	"HISTORY": [
+		""
+	],
+
+	"OBS_LAT": 47.3412284851074,
+	"OBS_LAC": "N",
+	"OBS_LON": 8.11221504211426,
+	"OBS_LOC": "E",
+	"OBS_ALT": 416.5,
+
+	"FRQFILE": "FRG0021.CFG",
+	"PWM_VAL": 120
+}

@@ -23,8 +23,11 @@ Requires-Dist: pyserial-asyncio>=0.6
 Requires-Dist: astropy>=5
 Requires-Dist: h5py>=3.8
 Requires-Dist: numpy>=1.23
+Requires-Dist: pydantic>=2
 Provides-Extra: test
 Requires-Dist: pytest>=8.0; extra == "test"
+Provides-Extra: zmq
+Requires-Dist: pyzmq>=25; extra == "zmq"
 Dynamic: license-file
 
 # callisto
@@ -53,6 +56,10 @@ Após instalar, os comandos ficam disponíveis:
 - `callisto/runtime.py`: fachada de runtime e compatibilidade com legado
 - `callisto/cli.py`: ponto de entrada de linha de comando
 
+## Functionalities
+
+
+
 ## Exemplos de configuração
 
 Foram adicionados exemplos prontos em `examples/`:
@@ -64,6 +71,11 @@ Foram adicionados exemplos prontos em `examples/`:
 Esses arquivos são incluídos no pacote-fonte via `MANIFEST.in` e também
 instalados no wheel em `share/callisto/examples`.
 
-## Notas
+## Fontes utilizadas
 
-O módulo `ecallisto.py` permanece para compatibilidade com integrações legadas, mas já consome módulos do pacote `callisto`.
+This project i a python port with added functionalities of the work done by Alec Myczko and available as a debian package as 
+
+Package: callisto
+Version: 1.1.0-3
+Architecture: i386
+Maintainer: Alex Myczko <tar@debian.org>

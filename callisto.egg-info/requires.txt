@@ -3,6 +3,10 @@ pyserial-asyncio>=0.6
 astropy>=5
 h5py>=3.8
 numpy>=1.23
+pydantic>=2
 
 [test]
 pytest>=8.0
+
+[zmq]
+pyzmq>=25

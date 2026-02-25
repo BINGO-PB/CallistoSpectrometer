@@ -1,58 +1,24 @@
-"""Modelos de dados do domínio callisto."""
+"""callisto/models.py
 
-from dataclasses import dataclass
+Backward-compatible re-export of domain models.
 
+The canonical domain definitions live in :mod:`callisto.domain.models`
+and are implemented with Pydantic, following the BINGO collaboration
+guidelines. This module keeps the public API stable for existing code
+(``from callisto.models import Config``, etc.).
 
-@dataclass
-class Buffer:
-    data: bytearray
-    size: int = 0
-    timestamp: int | None = None
+Copyright BINGO Collaboration
+Last modified: 2026-02-24
+"""
 
+from __future__ import annotations
 
-@dataclass
-class OVSItem:
-    freq: float
-    value: int
+from .domain import Buffer, Config, Firmware, OVSItem, ScheduleEntry
 
-
-@dataclass
-class Firmware:
-    if_init: float = 0.0
-    if_init_correction: float = 0.0
-    data10bit: bool = False
-    eeprom_info: bool = False
-    versionstr: str = "unknown"
-
-
-@dataclass
-class Config:
-    channelfile: str = ""
-    serialport: str = "/dev/ttyS0"
-    filetime: int = 60
-    samplerate: int = 1
-    net_port: int = 0
-    datadir: str = "/var/lib/callisto"
-    logdir: str = "/var/log/callisto"
-    ovsdir: str = "/var/lib/callisto/overview"
-    schedulefile: str = "schedule.cfg"
-    clocksource: int = 1
-    agclevel: int = 0
-    chargepump: int = 1
-    focuscode: int = 1
-    nchannels: int = 1
-    autostart: bool = False
-    instrument: str = "CALLISTO"
-    output_format: str = "fits"
-    # ZeroMQ PUB (opcional). Se `zmq_pub_endpoint` for vazio, streaming fica desabilitado.
-    zmq_pub_endpoint: str = ""
-    zmq_pub_bind: bool = True
-    zmq_pub_topic: str = "callisto"
-    zmq_pub_hwm: int = 10
-
-
-@dataclass
-class ScheduleEntry:
-    t: int
-    action: int
-    focuscode: int | None = None
+__all__ = [
+    "Buffer",
+    "OVSItem",
+    "Firmware",
+    "Config",
+    "ScheduleEntry",
+]

@@ -1,0 +1,89 @@
+classDiagram
+
+class Buffer {
+  +bytearray data
+  +int size
+  +int timestamp
+}
+
+class OVSItem {
+  +float freq
+  +int value
+}
+
+class Firmware {
+  +float if_init
+  +float if_init_correction
+  +bool data10bit
+  +bool eeprom_info
+  +str versionstr
+}
+
+class Config {
+  +str channelfile
+  +str serialport
+  +int filetime
+  +int samplerate
+  +int net_port
+  +str datadir
+  +str logdir
+  +str ovsdir
+  +str schedulefile
+  +int clocksource
+  +int agclevel
+  +int chargepump
+  +int focuscode
+  +int nchannels
+  +bool autostart
+  +str instrument
+  +str output_format
+  +str zmq_pub_endpoint
+  +bool zmq_pub_bind
+  +str zmq_pub_topic
+  +int zmq_pub_hwm
+}
+
+class ScheduleEntry {
+  +int t
+  +int action
+  +int focuscode
+}
+
+class _AsyncSerialProtocol {
+  -Queue~str~ _read_queue
+}
+
+class AsyncSerialBackend {
+  -logger
+  -AbstractEventLoop _loop
+  -Thread _thread
+  -Queue~str~ _read_queue
+  -object _transport
+  -_AsyncSerialProtocol _protocol
+  +start(port: str, baudrate: int) bool
+  +stop() void
+  +read_char(timeout: float) str
+  +write(payload: str) void
+}
+
+class DataWriterEngine {
+  -Config _config
+  -callable _get_channel_frequencies
+  -callable _utc_iso_from_us
+  -callable _logger
+  +fits_init() bool
+  +hdf5_init() bool
+  +write_data_buffer(buf_bytes: bytes, ts_us: int) void
+  +save_overview_hdf5(points: list~OVSItem~, ts_epoch: int) void
+}
+
+class ZmqPublisher {
+  +start() bool
+  +stop() void
+  +publish_frame(...) void
+}
+
+AsyncSerialBackend --> _AsyncSerialProtocol : uses
+DataWriterEngine --> Config : config
+DataWriterEngine --> OVSItem : overview items
+DataWriterEngine --> ZmqPublisher : publishes via

@@ -1,0 +1,67 @@
+{
+  "description": "Atributos HDF5 equivalentes ao cabeçalho FITS em fitsheader.json para arquivos de dados CALLISTO.",
+
+  "file_level_attributes": {
+    "INSTRUME": "LAB",
+    "DATE-OBS": "2004-12-06T12:45:23.382Z",
+    "TIMEZONE": "UTC",
+    "SAMPRATE": 1,
+    "NCHAN": 200,
+    "FOCUSCOD": 1,
+    "AGCLEVEL": 0,
+    "CHGPUMP": 1,
+    "CLOCKSRC": 1
+  },
+
+  "dataset_group_attributes": {
+    "matrix": {
+      "BUNIT": "digits",
+      "DATAMIN": 0,
+      "DATAMAX": 255
+    },
+    "frequencies_mhz": {
+      "CTYPE2": "Frequency [MHz]",
+      "CRVAL2": 200.0,
+      "CRPIX2": 0,
+      "CDELT2": -1.0
+    },
+    "timestamps_unix_us": {
+      "CTYPE1": "Time [UT]",
+      "CRVAL1": 45923.0,
+      "CRPIX1": 0,
+      "CDELT1": 0.5
+    },
+    "timestamps_utc": {
+      "CTYPE1": "Time [UT]"
+    }
+  },
+
+  "overview_file_attributes": {
+    "INSTRUME": "LAB",
+    "DATE-OBS": "2004-12-06T12:45:23.382Z",
+    "TIMEZONE": "UTC",
+    "TYPE": "SPECTRAL_OVERVIEW",
+    "AGCLEVEL": 0,
+    "CLOCKSRC": 1,
+    "FILETIME": 60
+  },
+
+  "extra_observatory_metadata": {
+    "OBS_LAT": 47.3412284851074,
+    "OBS_LAC": "N",
+    "OBS_LON": 8.11221504211426,
+    "OBS_LOC": "E",
+    "OBS_ALT": 416.5,
+    "FRQFILE": "FRG0021.CFG",
+    "PWM_VAL": 120,
+    "ORIGIN": "ETH Zurich Switzerland",
+    "TELESCOP": "Radio Spectrometer",
+    "OBJECT": "Sun",
+    "CONTENT": "2004/12/06 Radio flux density (BLEN5M)",
+    "COMMENT": [
+      "Warning: the value of CDELT1 may be rounded!",
+      "Warning: the frequency axis may not be regular!",
+      "Warning: the value of CDELT2 may be rounded!"
+    ]
+  }
+}

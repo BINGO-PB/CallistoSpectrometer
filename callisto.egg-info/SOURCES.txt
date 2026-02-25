@@ -13,6 +13,7 @@ callisto/runtime.py
 callisto/serial_backend.py
 callisto/time_utils.py
 callisto/writers.py
+callisto/zmq_pub.py
 callisto.egg-info/PKG-INFO
 callisto.egg-info/SOURCES.txt
 callisto.egg-info/dependency_links.txt
@@ -20,6 +21,7 @@ callisto.egg-info/entry_points.txt
 callisto.egg-info/requires.txt
 callisto.egg-info/top_level.txt
 docs/architecture.md
+docs/configurations.md
 examples/callisto.cfg
 examples/frq00005.cfg
 examples/scheduler.cfg
