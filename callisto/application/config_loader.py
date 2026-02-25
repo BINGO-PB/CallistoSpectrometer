@@ -97,6 +97,7 @@ def _apply_cfg_pair(cfg: Config, key: str, value: str) -> Config:
         "detector_sens": "detector_sens",
         "autostart": "autostart",
         "outputformat": "output_format",
+        "net_port": "net_port",
         "datapath": "datadir",
         "logpath": "logdir",
         # handle typo/variant from docs

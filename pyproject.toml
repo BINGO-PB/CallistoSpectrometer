@@ -40,7 +40,13 @@ callisto = "callisto.cli:main"
 ecallisto = "callisto.cli:main"
 
 [tool.setuptools]
-packages = ["callisto"]
+packages = [
+  "callisto",
+  "callisto.application",
+  "callisto.domain",
+  "callisto.ports",
+  "callisto.adapters",
+]
 py-modules = ["ecallisto", "eeprom"]
 include-package-data = true
 
