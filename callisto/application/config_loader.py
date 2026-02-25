@@ -18,6 +18,7 @@ from datetime import time
 from typing import Iterable, Mapping
 
 from ..domain import Config, ScheduleEntry
+from ..logging_utils import logprintf
 
 _KEY_VALUE_RE = re.compile(r"^\[(?P<key>[^\]]+)\]\s*=\s*(?P<value>.*)$")
 
@@ -168,6 +169,20 @@ def load_config(
         cfg = cfg.model_copy(update={"logdir": os.path.join(base_dir, cfg.logdir)})
     if not os.path.isabs(cfg.ovsdir):
         cfg = cfg.model_copy(update={"ovsdir": os.path.join(base_dir, cfg.ovsdir)})
+
+    # validate that key directories exist or can be created and are writable
+    for key in ("datadir", "logdir", "ovsdir"):
+        value = getattr(cfg, key, "") or ""
+        if not value:
+            continue
+        try:
+            os.makedirs(value, exist_ok=True)
+        except Exception as exc:  # pragma: no cover - depends on FS/permissions
+            logprintf(0, "Failed to create %s directory %s: %s", key, value, exc)
+            raise
+        if not os.access(value, os.W_OK):
+            logprintf(0, "Directory %s for %s is not writable", value, key)
+            raise PermissionError(f"Directory not writable: {value}")
 
     # simple environment overrides (minimal but useful)
     overrides: dict[str, object] = {}
