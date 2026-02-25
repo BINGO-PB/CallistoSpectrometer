@@ -101,6 +101,7 @@ def _apply_cfg_pair(cfg: Config, key: str, value: str) -> Config:
         "net_port": "net_port",
         "datapath": "datadir",
         "logpath": "logdir",
+        "ovsdir": "ovsdir",
         # handle typo/variant from docs
         "calport": "calport",
         "calpost": "calport",
