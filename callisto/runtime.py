@@ -35,7 +35,7 @@ from .constants import (
     STOPPED,
 )
 from .domain import Config, ScheduleEntry
-from .logging_utils import logprintf
+from .logging_utils import logprintf, setup_file_logging
 from .time_utils import get_usecs, utc_iso_from_us
 
 
@@ -382,6 +382,14 @@ def _python_daemon_main() -> int:
             "ovsdir": cfg.ovsdir or cfg.datadir or os.getcwd(),
         }
     )
+
+    # Set up file logging in addition to stderr so that daemon activity
+    # is persisted even when run under a service manager.
+    try:
+        logfile = setup_file_logging(cfg.logdir)
+        logprintf(2, "File logging initialised at %s", logfile)
+    except Exception as exc:  # pragma: no cover - depends on FS/permissions
+        logprintf(1, "File logging disabled: %s", exc)
 
     daemon = _PythonDaemon(cfg, schedule)
     return daemon.serve_forever()
