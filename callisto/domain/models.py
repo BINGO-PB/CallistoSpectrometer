@@ -1,3 +1,4 @@
+# LB:COMMENT::Type annotation com tipos primitivos, seguindo PEP 484
 """callisto/domain/models.py
 
 Pydantic domain models representing core Callisto entities.

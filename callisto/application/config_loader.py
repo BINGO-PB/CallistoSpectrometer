@@ -1,3 +1,4 @@
+# LB:COMMENT::Estamos usando OS para lidar com pastas, vamos mudar para pathlib , em todo o projeto.
 """callisto/application/config_loader.py
 
 Configuration and schedule loaders for Callisto.
@@ -102,9 +103,7 @@ def _apply_cfg_pair(cfg: Config, key: str, value: str) -> Config:
         "datapath": "datadir",
         "logpath": "logdir",
         "ovsdir": "ovsdir",
-        # handle typo/variant from docs
         "calport": "calport",
-        "calpost": "calport",
         # zmq options
         "zmq_pub_endpoint": "zmq_pub_endpoint",
         "zmq_pub_bind": "zmq_pub_bind",

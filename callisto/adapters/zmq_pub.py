@@ -68,6 +68,8 @@ class ZmqPublisher:
             pass
         self._sock = None
 
+    # LB:COMMENT::Ainda vamos discutir o formato exato do frame, e implementar em jsonschema ou algo assim, mas a ideia geral é que seja algo como:
+    # {
     def publish_frame(
         self,
         *,

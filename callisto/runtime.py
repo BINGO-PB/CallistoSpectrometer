@@ -286,7 +286,9 @@ class _PythonDaemon:
                 continue
 
             if in_message:
-                if len(message) < MAX_MESSAGE:
+                if (
+                    len(message) < MAX_MESSAGE
+                ):  # LB:COMMENT::Definir MAX_MESSAGE como um valor razoável para evitar consumo excessivo de memória em caso de mensagens malformadas ou ataques.
                     message.append(ch)
                 continue
 
@@ -535,6 +537,7 @@ def _import_legacy_main() -> Callable[[], int | None]:
     If the external module is unavailable, the pure-Python daemon is
     used instead. This allows development and tests to run without the
     Debian package installed.
+    LB:COMMENT::REMOVE
     """
 
     try:  # pragma: no cover - depends on system packages
