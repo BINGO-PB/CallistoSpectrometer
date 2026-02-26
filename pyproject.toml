@@ -25,6 +25,7 @@ dependencies = [
   "h5py>=3.8",
   "numpy>=1.23",
   "pydantic>=2",
+  "pydantic-settings>=2.0",
 ]
 
 [project.optional-dependencies]
@@ -40,30 +41,31 @@ callisto = "callisto.cli:main"
 ecallisto = "callisto.cli:main"
 
 [tool.setuptools]
-packages = [
-  "callisto",
-  "callisto.application",
-  "callisto.domain",
-  "callisto.ports",
-  "callisto.adapters",
-]
-py-modules = ["ecallisto", "eeprom"]
+package-dir = {"" = "src"}
 include-package-data = true
 
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [tool.setuptools.data-files]
+"share/callisto/config" = [
+  "config/callisto.cfg",
+  "config/scheduler.cfg",
+]
 "share/callisto/examples" = [
-  "examples/callisto.cfg",
   "examples/frq00005.cfg",
-  "examples/scheduler.cfg",
+  "examples/frq00400.cfg",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
 
 [project.urls]
 Homepage = "https://bingo.github.io/callisto"
 Documentation = "https://readthedocs.org"
-Repository = "https://github.com/me/spam.git"
-Issues = "https://github.com/me/spam/issues"
-Changelog = "https://github.com/me/spam/blob/master/CHANGELOG.md"
+Repository = "https://github.com/BINGO-PB/callisto"
+Issues = "https://github.com/BINGO-PB/callisto/issues"
+Changelog = "https://github.com/BINGO-PB/callisto/blob/master/CHANGELOG.md"
